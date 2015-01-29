@@ -146,6 +146,32 @@ public class Fractal {
 		return k;
 	}
 	
+	public static String[] setDifference(String[] a, String[] b){
+		ArrayList<String> newSet = new ArrayList<String>();
+		
+		//Loop all strings in A
+		for(String m : a){
+			
+			//Assume it can be added
+			boolean add = true;
+			
+			//Loop all strings in B
+			for(String n : b){
+				
+				//If some string in A exists in B, then discard it
+				if(m.equals(n)){
+					add=false;
+					break;
+				}
+			}
+			
+			//If no match has been found, add it to the new set
+			if(add)newSet.add(m);
+		}
+		
+		return (String[])newSet.toArray(new String[0]);
+	}
+	
 	public void generate(String regex, int depth){
 		fractalDepth = depth;
 		
@@ -158,9 +184,12 @@ public class Fractal {
 		//Get all matches
 		String[] matches = getMatches(strings, p);
 		
+		//Get all non-matching strings (all strings in 'strings' that aren't in 'matches').
+		String[] notMatches = setDifference(strings, matches);
+		
 		//Assign distances to all matches
 		RegExDistance r = new RegExDistance();
-		r.process(matches, strings.length, 0);
+		r.process(matches, notMatches);
 		distanceByRegex = r.getTable();
 	}
 	
@@ -200,7 +229,7 @@ public class Fractal {
 		return image;
 	}
 	
-	private static String[] generateRegExps(int depth){
+	public static String[] generateRegExps(int depth){
 		//Base case
 		if (depth==0)
 			return new String[]{"0","1","2","3"};

@@ -17,24 +17,75 @@ public class RegExDistance {
 		return table;
 	}
 	
-	public void process(String[] regexps, int max, int distance){
+	public void process(String[] matches, String[] notMatches){
 		
-		//Add all strings to the table
-		for(String s : regexps){
-			if(table.containsKey(s))continue;
+		//First populate the table with the matches
+		for(String t : matches){
+			table.put(t, 0);
+		}
+		
+		
+		//Go through all the strings that *don't* match the regex
+		for(String s : notMatches){
+			int distance = Integer.MAX_VALUE;
+			
+			//Loop through all matches and find the minimum distance
+			for(String t : matches){
+				int d = LevenshteinDistance(s,t);
+				
+				//If this new distance is smaller than the old, then replace it
+				if(d<distance)
+					distance = d;
+				
+				//And if the distance is 1, just break (it can't get smaller than 1)
+				if(d==1)
+					break;
+			}
 			
 			table.put(s, distance);
 		}
 		
-		//Get all variations of the strings
-		String[] variations = getVariations(regexps);
-		
-		//If we already have all variations catalogued (no new variations), then stop here.
-		if(variations.length == 0)
-			return;
-		
-		//Otherwise, process the variations again (with increased distance).
-		process(variations, max, distance+1);
+	}
+	
+	//Slightly modified version of the algorithm found at:
+	//http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Java
+	private static int LevenshteinDistance (String s0, String s1) {                          
+	    int len0 = s0.length() + 1;                                                     
+	    int len1 = s1.length() + 1;                                                     
+	 
+	    // the array of distances                                                       
+	    int[] cost = new int[len0];                                                     
+	    int[] newcost = new int[len0];                                                  
+	 
+	    // initial cost of skipping prefix in String s0                                 
+	    for (int i = 0; i < len0; i++) cost[i] = i;                                     
+	 
+	    // dynamically computing the array of distances                                  
+	 
+	    // transformation cost for each letter in s1                                    
+	    for (int j = 1; j < len1; j++) {                                                
+	        // initial cost of skipping prefix in String s1                             
+	        newcost[0] = j;                                                             
+	 
+	        // transformation cost for each letter in s0                                
+	        for(int i = 1; i < len0; i++) {                                             
+	            // matching current letters in both strings                             
+	            int match = (s0.charAt(i - 1) == s1.charAt(j - 1)) ? 0 : 1;             
+	 
+	            // computing cost for each transformation
+	            // insertion and deletion discarded due to all strings having the same length
+	            int cost_replace = cost[i - 1] + match;                                
+	 
+	            // keep minimum cost                                                    
+	            newcost[i] = cost_replace;
+	        }                                                                           
+	 
+	        // swap cost/newcost arrays                                                 
+	        int[] swap = cost; cost = newcost; newcost = swap;                          
+	    }                                                                               
+	 
+	    // the distance is the cost for transforming all letters in both strings        
+	    return cost[len0 - 1];                                                          
 	}
 	
 	public String[] getVariations(String[] regexps){
