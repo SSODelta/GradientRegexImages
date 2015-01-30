@@ -168,7 +168,7 @@ public class Fractal {
 		
 		added = 0;
 		maxStrings = (int)Math.pow(4,depth);
-		prog = maxStrings / 40;
+		prog = maxStrings /80;
 		int size = (int)Math.pow(2,depth);
 		img = new BufferedImage(size,size,BufferedImage.TYPE_INT_RGB);
 		
@@ -188,18 +188,33 @@ public class Fractal {
 		//Get the complement automaton
 		Automaton complement = aut.complement().intersection(length_n);
 		complement.determinize();
+		
+		//Get the automaton that accepts the language, and has a length of n
+		Automaton lang_n = aut.intersection(length_n);
 	
 		System.out.println("Computing language...");
 		
-		matches = aut.getStrings(depth);
+		matches = lang_n.getStrings(depth);
+		
+		if(matches.size()==0){
+			System.out.println("Error: Empty language detected. Aborting...");
+			return;
+		}
 		
 		System.out.println("Processing states...");
-		System.out.println("	Progress: |----------------------------------------|");
+		System.out.println("	Progress: |--------------------------------------------------------------------------------|");
 		System.out.print  ("	          |");
 		
+		processMatches(matches);
 		processState(complement.getInitialState(), new StringBuilder(), 0);
 		
 		System.out.print("|\n");
+	}
+	
+	private void processMatches(Set<String> m){
+		for(String s : m){
+			paintString(s,0);
+		}
 	}
 	
 	/**
@@ -238,6 +253,10 @@ public class Fractal {
 		
 		int d = getDistance(k);
 
+		paintString(k,d);
+	}
+	
+	private void paintString(String k, int d){
 		Point p = regexToPoint(k);
 		
 		double r = (double) d / (double) fractalDepth;

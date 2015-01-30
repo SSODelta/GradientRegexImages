@@ -2,6 +2,7 @@ package com.ignatieff.gradientregex;
 
 import java.io.IOException;
 import java.util.Scanner;
+import java.util.regex.PatternSyntaxException;
 
 public class Main {
 
@@ -9,22 +10,29 @@ public class Main {
 		Scanner s = new Scanner(System.in);
 		
 		boolean b = true;
+		int depth = 8;
 		
 		while(b){
-			System.out.print(">");
-			processData(s.nextLine());
+			String q = "";
+			try{
+				System.out.print(">");
+				q = s.nextLine().toLowerCase();
+				if(q.startsWith("d=")){
+					depth = Integer.parseInt(q.substring(2));
+					continue;
+				}
+				Fractal.generateAndSaveImage(q, rnd()+".png", depth);
+			} catch(PatternSyntaxException e){
+				System.out.println("Unable to parse regex: "+q+".");
+			} catch (IOException e) {
+				System.out.println("Unable to save image.");
+			} catch(NumberFormatException e){
+				System.out.println("Unable to parse integer: "+q.substring(2));
+			} finally{
+				System.out.println();
+			}
 		}
 		s.close();
-	}
-	
-	private static void processData(String k){
-		try {
-			Fractal.generateAndSaveImage(k, rnd()+".png", 13);
-		} catch (IOException e) {
-			System.out.println("Unable to generate image: "+e.getMessage());
-		} finally {
-			System.out.println();
-		}
 	}
 	
 	private static int rnd(){
