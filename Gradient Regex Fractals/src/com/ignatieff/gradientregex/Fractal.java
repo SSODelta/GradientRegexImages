@@ -8,16 +8,14 @@ import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
 
 import dk.brics.automaton.Automaton;
 import dk.brics.automaton.RegExp;
+import dk.brics.automaton.State;
+import dk.brics.automaton.Transition;
 
 public class Fractal {
 	
@@ -42,15 +40,16 @@ public class Fractal {
 		    							byteToColor(0x593315), //Deep Yellowish Brown
 		    							byteToColor(0xF13A13), //Vivid Reddish Orange
 		    							byteToColor(0x232C16)};//Dark Olive Green;
-	
-	private Map<String, Integer> distanceByRegex;
 	private int fractalDepth;
 	private Color base;
 	
-	private int dr, dg, db;
+	private BufferedImage img;
+	
+	private Set<String> matches;
+	
+	private int dr, dg, db, maxStrings, added, prog;
 	
 	public Fractal(Color c1, Color c2){
-		distanceByRegex = new HashMap<String, Integer>();
 		base = c1;
 		dr = c2.getRed()-  c1.getRed();
 		dg = c2.getGreen()-c1.getGreen();
@@ -83,8 +82,9 @@ public class Fractal {
 		
 		System.out.println("Producing image...");
 		
-		BufferedImage img = f.getImageData();
+		BufferedImage img = f.getImage();
 		BufferedImage imgWithText = writeToImage(img,regex);
+		
 		ImageIO.write(imgWithText, "png", new File(output));
 		
 		System.out.println("Image saved to "+output+".");
@@ -105,55 +105,6 @@ public class Fractal {
 		int b = base.getBlue()+(int)(db*k);
 		Color diff = new Color(r, g, b);
 		return diff.getRGB();
-	}
-	
-	/**
-	 * Get the maximum edit distance of any string based on the data saved in this object.
-	 * @return An int representing the maximum edit distance.
-	 */
-	private int getMaximumDistance(){
-		Collection<Integer> vals = distanceByRegex.values();
-		int max = 1;
-		for(Integer i : vals){
-			if(i>max)max=i;
-		}
-		return max;
-	}
-	
-	/**
-	 * Returns the image data of this Fractal-object. 
-	 * Returns an empty image if generate() has not been called first.
-	 * @return A BufferedImage representing the data saved in this object.
-	 */
-	public BufferedImage getImageData(){
-		int width = (int)Math.pow(2, fractalDepth);
-		BufferedImage img = new BufferedImage(width, width, BufferedImage.TYPE_INT_RGB);
-		
-		Map<Integer, Double> dist11 = new HashMap<Integer, Double>();
-		
-		Set<String> regexps = distanceByRegex.keySet();
-		int max = getMaximumDistance();
-		
-		for(String s : regexps){
-			Point p = regexToPoint(s);
-
-			int d = distanceByRegex.get(s);
-			
-			double r = 0.0;
-			
-			if(dist11.containsKey(d)){
-				r = dist11.get(d);
-			} else {
-				r = (double) d / (double)(max);
-				dist11.put(d, r);
-			}
-
-			
-			img.setRGB(p.x, p.y, getColor(r));
-
-		}
-		
-		return img;
 	}
 
 	/**
@@ -202,12 +153,25 @@ public class Fractal {
 	}
 	
 	/**
+	 * Gets the image object associated with this object. Will return null if generate() hasn't run on this object.
+	 * @return A BufferedImage.
+	 */
+	public BufferedImage getImage(){
+		return img;
+	}
+	/**
 	 * Generates content for this Fractal-object.
 	 * @param regex The Regular Expression to generate an image of.
 	 * @param depth The size of the image, where the width/height of the image is 2^depth
 	 */
 	public void generate(String regex, int depth){
-
+		
+		added = 0;
+		maxStrings = (int)Math.pow(4,depth);
+		prog = maxStrings / 40;
+		int size = (int)Math.pow(2,depth);
+		img = new BufferedImage(size,size,BufferedImage.TYPE_INT_RGB);
+		
 		fractalDepth = depth;
 		
 		System.out.println("Constructing DFA's...");
@@ -223,20 +187,95 @@ public class Fractal {
 		
 		//Get the complement automaton
 		Automaton complement = aut.complement().intersection(length_n);
+		complement.determinize();
 	
-		System.out.print("Generating strings...");
+		System.out.println("Computing language...");
 		
-		Set<String> matches = aut.getStrings(depth);
+		matches = aut.getStrings(depth);
 		
-		System.out.print(".\n");
+		System.out.println("Processing states...");
+		System.out.println("	Progress: |----------------------------------------|");
+		System.out.print  ("	          |");
 		
+		processState(complement.getInitialState(), new StringBuilder(), 0);
 		
-		Set<String> notMatches = complement.getStrings(depth);
+		System.out.print("|\n");
+	}
+	
+	/**
+	 * Recursively processes a single State-object.
+	 * @param s The State to process
+	 * @param sb The StringBuilder associated with this object.
+	 * @param k The depth of recursion. 
+	 */
+	private void processState(State s, StringBuilder sb, int k){
 		
-		//Assign distances to all matches
-		RegExDistance r = new RegExDistance();
-		r.process(matches, notMatches);
-		distanceByRegex = r.getTable();
+		if(k==fractalDepth){
+			if(s.isAccept())
+				addString(sb.toString());
+			
+			return;
+		}
+		Set<Transition> transitions = s.getTransitions();
+		for(Transition t : transitions){
+			
+			State newS = t.getDest();
+			
+			for(char c=t.getMin(); c<t.getMax()+1; c++){
+				processState(newS, new StringBuilder(sb).append(c), k+1);
+			}
+		}
+	}
+	
+	/**
+	 * Adds this string to the image
+	 * @param k
+	 */
+	private void addString(String k){
+		
+		added++;
+		if(added%prog==0)System.out.print("-");
+		
+		int d = getDistance(k);
+
+		Point p = regexToPoint(k);
+		
+		double r = (double) d / (double) fractalDepth;
+		
+		int c = getColor(r);
+		
+		img.setRGB(p.x, p.y, c);
+	}
+	
+	/**
+	 * Computes the hammer distance between some string k, and the set of matches.
+	 * @param k The string
+	 * @return
+	 */
+	private int getDistance(String k){
+		int dist = Integer.MAX_VALUE;
+		for(String s : matches){
+			int d = hammerDistance(s,k);
+			if(d==1)return 1;
+			if(d<dist)dist=d;
+		}
+		return dist;
+	}
+	
+	/**
+	 * Computes the Hammer distance between two strings of equal length.
+	 * @param s0 
+	 * @param s1
+	 * @return
+	 */
+	private static int hammerDistance (String s0, String s1) {                          
+	    int dist = 0;
+	    
+	    for(int i=0; i<s0.length(); i++){
+	    	if(s0.charAt(i) != s1.charAt(i))dist++;
+	    }
+	    
+	    return dist;
 	}
 	
 	/**

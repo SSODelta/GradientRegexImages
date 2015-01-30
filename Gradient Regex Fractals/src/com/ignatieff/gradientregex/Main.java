@@ -19,7 +19,7 @@ public class Main {
 	
 	private static void processData(String k){
 		try {
-			Fractal.generateAndSaveImage(k, rnd()+".png", 12);
+			Fractal.generateAndSaveImage(k, rnd()+".png", 13);
 		} catch (IOException e) {
 			System.out.println("Unable to generate image: "+e.getMessage());
 		} finally {
