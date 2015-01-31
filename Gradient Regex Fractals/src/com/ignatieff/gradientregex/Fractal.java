@@ -6,6 +6,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBuffer;
 import java.io.File;
 import java.io.IOException;
 import java.util.Set;
@@ -172,6 +173,9 @@ public class Fractal {
 		int size = (int)Math.pow(2,depth);
 		img = new BufferedImage(size,size,BufferedImage.TYPE_INT_RGB);
 		
+		DataBuffer buff = img.getRaster().getDataBuffer();
+		int bytes = buff.getSize() * DataBuffer.getDataTypeSize(buff.getDataType()) / 8;
+		System.out.println("bytes="+bytes);
 		fractalDepth = depth;
 		
 		System.out.println("Constructing DFA's...");
@@ -274,7 +278,7 @@ public class Fractal {
 	private int getDistance(String k){
 		int dist = Integer.MAX_VALUE;
 		for(String s : matches){
-			int d = hammerDistance(s,k);
+			int d = hammingDistance(s,k);
 			if(d==1)return 1;
 			if(d<dist)dist=d;
 		}
@@ -282,12 +286,12 @@ public class Fractal {
 	}
 	
 	/**
-	 * Computes the Hammer distance between two strings of equal length.
+	 * Computes the hamming distance between two strings of equal length.
 	 * @param s0 
 	 * @param s1
 	 * @return
 	 */
-	private static int hammerDistance (String s0, String s1) {                          
+	private static int hammingDistance (String s0, String s1) {                          
 	    int dist = 0;
 	    
 	    for(int i=0; i<s0.length(); i++){
